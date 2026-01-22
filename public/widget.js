@@ -1,32 +1,33 @@
 (function () {
-  const API_BASE = "https://subratflc-chatbot.onrender.com";
+  const STORAGE_KEY = "subrat_freelancer_chat_history_v1";
 
-  // ? Theme exactly like your website (black/white)
-  const THEME_BG = "#0f0f0f";
-  const THEME_TEXT = "#ffffff";
-  const LIGHT_BG = "#f7f7f7";
-  const CARD_BG = "#ffffff";
-  const BORDER = "#e6e6e6";
+  // ? Change API BASE if needed
+  const API_BASE = window.FLC_CHAT_API || "https://subratflc-chatbot.onrender.com";
 
-  const BOT_NAME = "Subrat Assistant";
-  const BOT_SUBTITLE = "Freelancer Support Chat";
+  let unreadCount = 0;
 
-  // ? Lead required before chatbot answers rules
+  // ? Lead First Flow
   let leadStep = 0;
-  let leadData = { name: "", email: "", phone: "", message: "" };
   let leadSubmitted = false;
 
-  // ? Rule based replies (after lead submitted)
+  const leadData = {
+    name: "",
+    email: "",
+    phone: "",
+    message: ""
+  };
+
+  // ? Rule based replies AFTER lead submitted
   const RULES = [
     {
       keywords: ["service", "services", "what do you do"],
       reply:
-        "My Services:\n1) Website Development\n2) Admin Panels\n3) APIs / Backend\n4) Chatbots (Rule-based + AI)"
+        "My Services:\n1) Website Development\n2) Admin Panels\n3) APIs / Backend\n4) Chatbots (Rule-based + AI)\n\nType: pricing / contact"
     },
     {
       keywords: ["pricing", "price", "cost", "charges", "budget"],
       reply:
-        "Pricing (Approx):\n• Basic Website: INR 5k - 15k\n• Admin Panel: INR 20k+\n• Chatbot: INR 10k+"
+        "Pricing (Approx):\n• Basic Website: INR 5k - 15k\n• Admin Panel: INR 20k+\n• Chatbot: INR 10k+\n\nType: contact to connect."
     },
     {
       keywords: ["react", "next", "frontend"],
@@ -34,12 +35,12 @@
     },
     {
       keywords: ["node", "express", "api", "backend"],
-      reply: "Yes! I build APIs using Node.js / Express with MongoDB/MySQL."
+      reply: "Yes! I build fast backend APIs using Node.js / Express."
     },
     {
       keywords: ["contact", "email", "phone", "whatsapp"],
       reply:
-        "You can contact using website form.\nOr WhatsApp: +91 XXXXX XXXXX\nEmail: yourmail@gmail.com"
+        "Contact:\nEmail: yourmail@gmail.com\nWhatsApp: +91 XXXXX XXXXX\n\nOr use Contact form on website."
     }
   ];
 
@@ -50,324 +51,474 @@
         if (text.includes(kw)) return rule.reply;
       }
     }
-    return "Type: services / pricing / contact";
+    return 'Try: "services", "pricing", "contact"';
   }
 
-  async function submitLead(lead) {
+  async function submitLead() {
     const res = await fetch(`${API_BASE}/api/leads`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(lead)
+      body: JSON.stringify({
+        name: leadData.name,
+        email: leadData.email,
+        phone: leadData.phone,
+        message: leadData.message
+      })
     });
+
     return res.json();
   }
 
-  // ? UI
-  const style = document.createElement("style");
-  style.innerHTML = `
-    #flc-chat-btn{
-      position:fixed; bottom:22px; right:22px;
-      width:62px; height:62px;
-      border-radius:50%;
-      background:${THEME_BG};
-      color:${THEME_TEXT};
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      font-size:14px;
-      font-weight:700;
-      cursor:pointer;
-      z-index:99999;
-      box-shadow:0 15px 35px rgba(0,0,0,.25);
-      transition: transform .2s ease;
-      user-select:none;
-    }
-    #flc-chat-btn:hover{ transform: scale(1.05); }
+  function playSound() {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const oscillator = ctx.createOscillator();
+      const gainNode = ctx.createGain();
 
-    #flc-chat-box{
-      position:fixed;
-      bottom:95px;
-      right:22px;
-      width:360px;
-      height:520px;
-      background:${CARD_BG};
-      border-radius:18px;
-      overflow:hidden;
-      box-shadow:0 18px 40px rgba(0,0,0,.25);
-      display:none;
-      flex-direction:column;
-      z-index:99999;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
-      border:1px solid ${BORDER};
-    }
+      oscillator.type = "sine";
+      oscillator.frequency.setValueAtTime(800, ctx.currentTime);
+      gainNode.gain.setValueAtTime(0.05, ctx.currentTime);
 
-    #flc-chat-head{
-      background:${THEME_BG};
-      color:${THEME_TEXT};
-      padding:14px 16px;
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-    }
-    #flc-chat-head .title{
-      font-size:15px;
-      font-weight:800;
-      letter-spacing:.2px;
-    }
-    #flc-chat-head .subtitle{
-      font-size:12px;
-      opacity:.9;
-      margin-top:2px;
-    }
+      oscillator.connect(gainNode);
+      gainNode.connect(ctx.destination);
 
-    #flc-chat-close{
-      cursor:pointer;
-      font-size:16px;
-      opacity:.95;
-      padding:6px 10px;
-      border-radius:10px;
-      transition: background .2s ease;
-      user-select:none;
-    }
-    #flc-chat-close:hover{
-      background:rgba(255,255,255,.12);
-    }
-
-    #flc-chat-body{
-      flex:1;
-      padding:14px;
-      overflow:auto;
-      background:${LIGHT_BG};
-    }
-
-    .flc-msg{
-      margin:10px 0;
-      padding:10px 12px;
-      border-radius:14px;
-      max-width:88%;
-      white-space:pre-line;
-      font-size:13.5px;
-      line-height:1.45;
-      box-shadow:0 6px 16px rgba(0,0,0,.06);
-    }
-    .flc-user{
-      background:${THEME_BG};
-      color:${THEME_TEXT};
-      margin-left:auto;
-      border-bottom-right-radius:6px;
-    }
-    .flc-bot{
-      background:${CARD_BG};
-      color:#111;
-      border:1px solid ${BORDER};
-      border-bottom-left-radius:6px;
-    }
-
-    #flc-chat-input{
-      display:flex;
-      gap:8px;
-      padding:12px;
-      border-top:1px solid ${BORDER};
-      background:${CARD_BG};
-    }
-    #flc-chat-input input{
-      flex:1;
-      padding:12px 12px;
-      border-radius:12px;
-      border:1px solid ${BORDER};
-      outline:none;
-      font-size:14px;
-      background:#fff;
-    }
-    #flc-chat-input button{
-      padding:12px 14px;
-      border:none;
-      border-radius:12px;
-      background:${THEME_BG};
-      color:${THEME_TEXT};
-      cursor:pointer;
-      font-size:14px;
-      font-weight:700;
-    }
-    #flc-chat-input button:hover{ opacity:.92; }
-
-    /* small quick buttons */
-    .flc-quick{
-      display:flex;
-      gap:8px;
-      flex-wrap:wrap;
-      margin-top:8px;
-    }
-    .flc-qbtn{
-      padding:8px 10px;
-      border-radius:12px;
-      border:1px solid ${BORDER};
-      background:#fff;
-      font-size:12.5px;
-      cursor:pointer;
-      user-select:none;
-    }
-    .flc-qbtn:hover{
-      border-color:#bdbdbd;
-    }
-  `;
-  document.head.appendChild(style);
-
-  const btn = document.createElement("div");
-  btn.id = "flc-chat-btn";
-  btn.innerHTML = "CHAT";
-
-  const box = document.createElement("div");
-  box.id = "flc-chat-box";
-  box.innerHTML = `
-    <div id="flc-chat-head">
-      <div>
-        <div class="title">${BOT_NAME}</div>
-        <div class="subtitle">${BOT_SUBTITLE}</div>
-      </div>
-      <div id="flc-chat-close">X</div>
-    </div>
-
-    <div id="flc-chat-body"></div>
-
-    <div id="flc-chat-input">
-      <input id="flc-msg" placeholder="Type here..." />
-      <button id="flc-send">Send</button>
-    </div>
-  `;
-
-  document.body.appendChild(btn);
-  document.body.appendChild(box);
-
-  const body = box.querySelector("#flc-chat-body");
-  const input = box.querySelector("#flc-msg");
-
-  function addMsg(text, type) {
-    const div = document.createElement("div");
-    div.className = `flc-msg ${type}`;
-    div.textContent = text;
-    body.appendChild(div);
-    body.scrollTop = body.scrollHeight;
+      oscillator.start();
+      oscillator.stop(ctx.currentTime + 0.12);
+    } catch (e) {}
   }
 
-  function showQuickButtons() {
-    const wrap = document.createElement("div");
-    wrap.className = "flc-quick";
-
-    const buttons = ["services", "pricing", "contact"];
-
-    buttons.forEach((t) => {
-      const b = document.createElement("div");
-      b.className = "flc-qbtn";
-      b.textContent = t;
-      b.onclick = () => {
-        addMsg(t, "flc-user");
-        const reply = findReply(t);
-        setTimeout(() => addMsg(reply, "flc-bot"), 250);
-      };
-      wrap.appendChild(b);
-    });
-
-    body.appendChild(wrap);
-    body.scrollTop = body.scrollHeight;
+  function saveChat() {
+    const messages = document.getElementById("messages").innerHTML;
+    localStorage.setItem(STORAGE_KEY, messages);
   }
 
-  async function handleLeadFlow(userText) {
-    const text = userText.trim();
+  function loadChat() {
+    const saved = localStorage.getItem(STORAGE_KEY);
 
-    if (leadSubmitted) return false;
+    if (saved) {
+      document.getElementById("messages").innerHTML = saved;
+      return;
+    }
 
-    // Step 1: Name
+    document.getElementById("messages").innerHTML =
+      `<div class="msg bot">Hello! Welcome to Subrat Freelancer Support.\nPlease type "hi" to start.</div>`;
+  }
+
+  function clearChat() {
+    localStorage.removeItem(STORAGE_KEY);
+
+    unreadCount = 0;
+    updateBadge();
+
+    leadStep = 0;
+    leadSubmitted = false;
+    leadData.name = "";
+    leadData.email = "";
+    leadData.phone = "";
+    leadData.message = "";
+
+    document.getElementById("messages").innerHTML =
+      `<div class="msg bot">Hello! Welcome to Subrat Freelancer Support.\nPlease type "hi" to start.</div>`;
+
+    saveChat();
+  }
+
+  function updateBadge() {
+    const badge = document.getElementById("badge");
+    if (unreadCount > 0) {
+      badge.style.display = "block";
+      badge.innerText = unreadCount;
+    } else {
+      badge.style.display = "none";
+    }
+  }
+
+  function toggleChat() {
+    const box = document.getElementById("chatBox");
+
+    if (box.classList.contains("open")) {
+      closeChat();
+    } else {
+      box.classList.add("open");
+      unreadCount = 0;
+      updateBadge();
+
+      setTimeout(() => {
+        document.getElementById("input").focus();
+      }, 150);
+    }
+  }
+
+  function closeChat() {
+    document.getElementById("chatBox").classList.remove("open");
+  }
+
+  // ? Lead first handler
+  async function handleLeadFlow(msg) {
+    const text = msg.trim();
+
+    // start lead flow after "hi"
+    if (leadStep === 0) {
+      leadStep = 1;
+      return "Great! Before we continue, please enter your name.";
+    }
+
     if (leadStep === 1) {
       leadData.name = text;
       leadStep = 2;
-      addMsg("Great. Now enter your email (or type skip).", "flc-bot");
-      return true;
+      return "Thanks. Please enter your email (or type skip).";
     }
 
-    // Step 2: Email
     if (leadStep === 2) {
       if (text.toLowerCase() !== "skip") leadData.email = text;
       leadStep = 3;
-      addMsg("Enter your phone number (or type skip).", "flc-bot");
-      return true;
+      return "Enter your phone number (or type skip).";
     }
 
-    // Step 3: Phone
     if (leadStep === 3) {
       if (text.toLowerCase() !== "skip") leadData.phone = text;
       leadStep = 4;
-      addMsg("Describe your requirement (example: I need a portfolio website).", "flc-bot");
-      return true;
+      return "Now describe your requirement (example: I need a website / admin panel).";
     }
 
-    // Step 4: Message
     if (leadStep === 4) {
       leadData.message = text;
 
-      // ? Basic check
       if (!leadData.name || !leadData.message) {
-        addMsg("Please provide a valid name and requirement message.", "flc-bot");
-        return true;
+        return "Please provide valid name and requirement.";
       }
 
-      addMsg("Submitting your details... please wait.", "flc-bot");
+      const result = await submitLead();
 
-      try {
-        const result = await submitLead(leadData);
-
-        if (result.success) {
-          leadSubmitted = true;
-          addMsg("Thank you! Your details are saved. Now you can ask: services / pricing / contact", "flc-bot");
-          showQuickButtons();
-        } else {
-          addMsg("Failed to submit. Please try again.", "flc-bot");
-        }
-      } catch (e) {
-        addMsg("Server error. Please try later.", "flc-bot");
+      if (result.success) {
+        leadSubmitted = true;
+        return (
+          "Thank you! Your details are saved.\n\nNow you can type:\nservices / pricing / contact"
+        );
+      } else {
+        return "Failed to submit. Please try again.";
       }
-
-      return true;
     }
 
-    return false;
+    return "";
   }
 
-  async function sendMessage() {
+  async function send() {
+    const input = document.getElementById("input");
     const msg = input.value.trim();
     if (!msg) return;
 
-    addMsg(msg, "flc-user");
+    const messages = document.getElementById("messages");
+
+    // ? user msg
+    messages.innerHTML += `<div class="msg user">${msg}</div>`;
     input.value = "";
+    messages.scrollTop = messages.scrollHeight;
+    saveChat();
 
-    // ? Lead first mandatory
-    const leadHandled = await handleLeadFlow(msg);
-    if (leadHandled) return;
+    // ? typing loader
+    const typingId = "typing-" + Date.now();
+    messages.innerHTML += `<div class="msg bot typing" id="${typingId}">Typing...</div>`;
+    messages.scrollTop = messages.scrollHeight;
 
-    // ? After lead submitted -> rules
-    const reply = findReply(msg);
-    setTimeout(() => addMsg(reply, "flc-bot"), 250);
+    try {
+      let reply = "";
+
+      // ? Lead mandatory first
+      if (!leadSubmitted) {
+        reply = await handleLeadFlow(msg);
+      } else {
+        reply = findReply(msg);
+      }
+
+      // remove typing
+      const typingDiv = document.getElementById(typingId);
+      if (typingDiv) typingDiv.remove();
+
+      messages.innerHTML += `<div class="msg bot">${reply}</div>`;
+      messages.scrollTop = messages.scrollHeight;
+
+      saveChat();
+      playSound();
+
+      const box = document.getElementById("chatBox");
+      if (!box.classList.contains("open")) {
+        unreadCount++;
+        updateBadge();
+      }
+    } catch (err) {
+      const typingDiv = document.getElementById(typingId);
+      if (typingDiv) typingDiv.remove();
+
+      messages.innerHTML += `<div class="msg bot">Server error. Please try again.</div>`;
+      messages.scrollTop = messages.scrollHeight;
+      saveChat();
+    }
   }
 
-  btn.onclick = () => {
-    box.style.display = "flex";
-    btn.style.display = "none";
+  // ? Inject HTML + CSS
+  const css = document.createElement("style");
+  css.innerHTML = `
+    body { font-family: Arial; margin: 0; background: transparent; }
 
-    // Reset lead for new user
-    leadStep = 1;
-    leadData = { name: "", email: "", phone: "", message: "" };
-    leadSubmitted = false;
+    .chat-btn {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: #111; /* MATCH YOUR WEBSITE */
+      color: #fff;
+      padding: 12px 16px;
+      border-radius: 50px;
+      cursor: pointer;
+      box-shadow: 0 4px 10px rgba(0,0,0,.3);
+      z-index: 999999;
+      user-select: none;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 700;
+    }
 
-    addMsg("Welcome! Before we continue, please enter your name.", "flc-bot");
-  };
+    .badge {
+      position: absolute;
+      top: -6px;
+      right: -6px;
+      background: red;
+      color: white;
+      font-size: 12px;
+      padding: 2px 6px;
+      border-radius: 20px;
+      font-weight: bold;
+      display: none;
+    }
 
-  box.querySelector("#flc-chat-close").onclick = () => {
-    box.style.display = "none";
-    btn.style.display = "flex";
-  };
+    .chat-box {
+      position: fixed;
+      bottom: 80px;
+      right: 20px;
+      width: 340px;
+      height: 470px;
+      background: #f6f6f6; /* CLEAN BG */
+      border-radius: 12px;
+      overflow: hidden;
+      z-index: 999999;
+      box-shadow: 0 4px 10px rgba(0,0,0,.3);
 
-  box.querySelector("#flc-send").onclick = sendMessage;
-  input.addEventListener("keypress", (e) => {
-    if (e.key === "Enter") sendMessage();
+      transform: translateY(30px);
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.25s ease;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .chat-box.open {
+      transform: translateY(0px);
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .chat-header {
+      background: #111; /* MATCH YOUR WEBSITE */
+      color: #fff;
+      padding: 10px;
+      font-weight: bold;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .header-left {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.1;
+    }
+
+    .header-title {
+      font-size: 14px;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .header-subtitle {
+      font-size: 11px;
+      opacity: 0.85;
+      font-weight: normal;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .header-btn {
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      padding: 0;
+    }
+
+    .chat-body {
+      flex: 1;
+      padding: 8px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .msg {
+      padding: 8px 10px;
+      border-radius: 10px;
+      margin: 4px 0;
+      max-width: 85%;
+      font-size: 14px;
+      white-space: pre-line;
+      word-break: break-word;
+      line-height: 1.25;
+    }
+
+    .user {
+      background: #111; /* MATCH YOUR WEBSITE */
+      color: white;
+      align-self: flex-end;
+    }
+
+    .bot {
+      background: #fff;
+      align-self: flex-start;
+      border: 1px solid #eee;
+    }
+
+    .typing {
+      font-style: italic;
+      opacity: 0.7;
+    }
+
+    .chat-footer {
+      display: flex;
+      padding: 6px;
+      background: #fff;
+      gap: 6px;
+      border-top: 1px solid #eee;
+    }
+
+    input {
+      flex: 1;
+      padding: 10px;
+      border-radius: 20px;
+      border: 1px solid #ddd;
+      outline: none;
+      font-size: 14px;
+    }
+
+    .send-btn {
+      padding: 10px 14px;
+      border-radius: 20px;
+      border: none;
+      background: #111; /* MATCH YOUR WEBSITE */
+      color: #fff;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .mini-icon {
+      width: 14px;
+      height: 14px;
+      display: inline-block;
+    }
+  `;
+  document.head.appendChild(css);
+
+  const wrapper = document.createElement("div");
+  wrapper.innerHTML = `
+    <div class="chat-btn" id="chatBtn">
+      <span class="badge" id="badge">0</span>
+
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+        <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v8Z"
+          stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+
+      Chat
+    </div>
+
+    <div class="chat-box" id="chatBox">
+
+      <div class="chat-header">
+        <div class="header-left">
+          <div class="header-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <path d="M12 2v2M8 4h8M7 20h10a4 4 0 0 0 4-4v-5a6 6 0 0 0-6-6H9a6 6 0 0 0-6 6v5a4 4 0 0 0 4 4Z"
+                stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M9 13h.01M15 13h.01"
+                stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M8 17c1.2 1 2.5 1.5 4 1.5s2.8-.5 4-1.5"
+                stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            ${BOT_NAME}
+          </div>
+
+          <div class="header-subtitle">
+            <svg class="mini-icon" viewBox="0 0 24 24" fill="none">
+              <path d="M20 6 9 17l-5-5"
+                stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            ${BOT_SUBTITLE}
+          </div>
+        </div>
+
+        <div class="header-actions">
+          <button class="header-btn" id="clearBtn" title="Clear Chat">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+              <path d="M3 6h18M8 6V4h8v2M6 6l1 16h10l1-16"
+                stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+
+          <button class="header-btn" id="closeBtn" aria-label="Close Chat" title="Close">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+              <path d="M18 6 6 18M6 6l12 12"
+                stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="chat-body" id="messages"></div>
+
+      <div class="chat-footer">
+        <input id="input" placeholder="Type message..." />
+        <button class="send-btn" id="sendBtn">Send</button>
+      </div>
+
+    </div>
+  `;
+
+  document.body.appendChild(wrapper);
+
+  // ? Events
+  document.getElementById("chatBtn").addEventListener("click", toggleChat);
+  document.getElementById("closeBtn").addEventListener("click", closeChat);
+  document.getElementById("clearBtn").addEventListener("click", clearChat);
+  document.getElementById("sendBtn").addEventListener("click", send);
+
+  document.addEventListener("DOMContentLoaded", () => {
+    loadChat();
+    const input = document.getElementById("input");
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") send();
+    });
   });
+
+  // ? load immediately if DOM already ready
+  loadChat();
 })();
