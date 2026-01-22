@@ -1,45 +1,45 @@
 (function () {
   const API_BASE = "https://subratflc-chatbot.onrender.com";
 
-  // ? Theme Colors (match your website)
-  const THEME_BG = "#111111";        // main dark
-  const THEME_ACCENT = "#ffffff";    // white
-  const THEME_BTN = "#111111";       // button
-  const THEME_BTN_TEXT = "#ffffff";  // button text
+  // ? Theme exactly like your website (black/white)
+  const THEME_BG = "#0f0f0f";
+  const THEME_TEXT = "#ffffff";
+  const LIGHT_BG = "#f7f7f7";
+  const CARD_BG = "#ffffff";
+  const BORDER = "#e6e6e6";
 
   const BOT_NAME = "Subrat Assistant";
   const BOT_SUBTITLE = "Freelancer Support Chat";
 
-  // ? RULES
+  // ? Lead required before chatbot answers rules
+  let leadStep = 0;
+  let leadData = { name: "", email: "", phone: "", message: "" };
+  let leadSubmitted = false;
+
+  // ? Rule based replies (after lead submitted)
   const RULES = [
-    {
-      keywords: ["hi", "hello", "hey"],
-      reply: "Hello! I am Subrat's freelancer assistant. How can I help you today?"
-    },
     {
       keywords: ["service", "services", "what do you do"],
       reply:
-        "My Services:\n1) Website Development\n2) Admin Panels\n3) APIs / Backend\n4) Chatbots (Rule-based + AI)\n\nType: pricing / contact / lead"
+        "My Services:\n1) Website Development\n2) Admin Panels\n3) APIs / Backend\n4) Chatbots (Rule-based + AI)"
     },
     {
       keywords: ["pricing", "price", "cost", "charges", "budget"],
       reply:
-        "Pricing (Approx):\n• Basic Website: INR 5k - 15k\n• Admin Panel: INR 20k+\n• Chatbot: INR 10k+\n\nType: lead to send your requirement."
+        "Pricing (Approx):\n• Basic Website: INR 5k - 15k\n• Admin Panel: INR 20k+\n• Chatbot: INR 10k+"
+    },
+    {
+      keywords: ["react", "next", "frontend"],
+      reply: "Yes! I build modern UI using React / Next.js."
+    },
+    {
+      keywords: ["node", "express", "api", "backend"],
+      reply: "Yes! I build APIs using Node.js / Express with MongoDB/MySQL."
     },
     {
       keywords: ["contact", "email", "phone", "whatsapp"],
       reply:
-        "You can contact using the website form.\nOr type: lead to send details here."
-    },
-    {
-      keywords: ["hire", "freelance", "available"],
-      reply:
-        "Yes, I am available for freelance work.\nType: lead to send your requirement."
-    },
-    {
-      keywords: ["lead", "submit", "send details"],
-      reply:
-        "Please send details like this:\n\nname: Your Name\nemail: yourmail@gmail.com\nphone: 9876543210\nmessage: I need a website"
+        "You can contact using website form.\nOr WhatsApp: +91 XXXXX XXXXX\nEmail: yourmail@gmail.com"
     }
   ];
 
@@ -50,27 +50,7 @@
         if (text.includes(kw)) return rule.reply;
       }
     }
-    return "Sorry, I did not understand.\nTry: services / pricing / lead / contact";
-  }
-
-  // ? Lead Parser
-  function parseLead(text) {
-    const lines = text.split("\n").map((l) => l.trim());
-    let name = "", email = "", phone = "", message = "";
-
-    for (const line of lines) {
-      const lower = line.toLowerCase();
-      if (lower.startsWith("name:")) name = line.slice(5).trim();
-      if (lower.startsWith("email:")) email = line.slice(6).trim();
-      if (lower.startsWith("phone:")) phone = line.slice(6).trim();
-      if (lower.startsWith("message:")) message = line.slice(8).trim();
-    }
-
-    if (!message && (name || email || phone)) {
-      message = "Lead submitted from website chatbot.";
-    }
-
-    return { name, email, phone, message };
+    return "Type: services / pricing / contact";
   }
 
   async function submitLead(lead) {
@@ -82,19 +62,20 @@
     return res.json();
   }
 
-  // ? UI (No emoji)
+  // ? UI
   const style = document.createElement("style");
   style.innerHTML = `
     #flc-chat-btn{
       position:fixed; bottom:22px; right:22px;
-      width:58px; height:58px;
+      width:62px; height:62px;
       border-radius:50%;
       background:${THEME_BG};
-      color:${THEME_ACCENT};
+      color:${THEME_TEXT};
       display:flex;
       align-items:center;
       justify-content:center;
-      font-size:18px;
+      font-size:14px;
+      font-weight:700;
       cursor:pointer;
       z-index:99999;
       box-shadow:0 15px 35px rgba(0,0,0,.25);
@@ -109,7 +90,7 @@
       right:22px;
       width:360px;
       height:520px;
-      background:#fff;
+      background:${CARD_BG};
       border-radius:18px;
       overflow:hidden;
       box-shadow:0 18px 40px rgba(0,0,0,.25);
@@ -117,11 +98,12 @@
       flex-direction:column;
       z-index:99999;
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      border:1px solid ${BORDER};
     }
 
     #flc-chat-head{
       background:${THEME_BG};
-      color:${THEME_ACCENT};
+      color:${THEME_TEXT};
       padding:14px 16px;
       display:flex;
       justify-content:space-between;
@@ -129,19 +111,19 @@
     }
     #flc-chat-head .title{
       font-size:15px;
-      font-weight:700;
+      font-weight:800;
       letter-spacing:.2px;
     }
     #flc-chat-head .subtitle{
       font-size:12px;
-      opacity:.85;
+      opacity:.9;
       margin-top:2px;
     }
 
     #flc-chat-close{
       cursor:pointer;
-      font-size:18px;
-      opacity:.9;
+      font-size:16px;
+      opacity:.95;
       padding:6px 10px;
       border-radius:10px;
       transition: background .2s ease;
@@ -155,14 +137,14 @@
       flex:1;
       padding:14px;
       overflow:auto;
-      background:#f5f6f8;
+      background:${LIGHT_BG};
     }
 
     .flc-msg{
       margin:10px 0;
       padding:10px 12px;
       border-radius:14px;
-      max-width:85%;
+      max-width:88%;
       white-space:pre-line;
       font-size:13.5px;
       line-height:1.45;
@@ -170,14 +152,14 @@
     }
     .flc-user{
       background:${THEME_BG};
-      color:${THEME_ACCENT};
+      color:${THEME_TEXT};
       margin-left:auto;
       border-bottom-right-radius:6px;
     }
     .flc-bot{
-      background:#fff;
+      background:${CARD_BG};
       color:#111;
-      border:1px solid #e7e7e7;
+      border:1px solid ${BORDER};
       border-bottom-left-radius:6px;
     }
 
@@ -185,32 +167,52 @@
       display:flex;
       gap:8px;
       padding:12px;
-      border-top:1px solid #eee;
-      background:#fff;
+      border-top:1px solid ${BORDER};
+      background:${CARD_BG};
     }
     #flc-chat-input input{
       flex:1;
       padding:12px 12px;
       border-radius:12px;
-      border:1px solid #ddd;
+      border:1px solid ${BORDER};
       outline:none;
       font-size:14px;
+      background:#fff;
     }
     #flc-chat-input button{
       padding:12px 14px;
       border:none;
       border-radius:12px;
-      background:${THEME_BTN};
-      color:${THEME_BTN_TEXT};
+      background:${THEME_BG};
+      color:${THEME_TEXT};
       cursor:pointer;
       font-size:14px;
-      font-weight:600;
+      font-weight:700;
     }
     #flc-chat-input button:hover{ opacity:.92; }
+
+    /* small quick buttons */
+    .flc-quick{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      margin-top:8px;
+    }
+    .flc-qbtn{
+      padding:8px 10px;
+      border-radius:12px;
+      border:1px solid ${BORDER};
+      background:#fff;
+      font-size:12.5px;
+      cursor:pointer;
+      user-select:none;
+    }
+    .flc-qbtn:hover{
+      border-color:#bdbdbd;
+    }
   `;
   document.head.appendChild(style);
 
-  // ? Chat Button (use text icon, no emoji)
   const btn = document.createElement("div");
   btn.id = "flc-chat-btn";
   btn.innerHTML = "CHAT";
@@ -229,7 +231,7 @@
     <div id="flc-chat-body"></div>
 
     <div id="flc-chat-input">
-      <input id="flc-msg" placeholder="Type your message..." />
+      <input id="flc-msg" placeholder="Type here..." />
       <button id="flc-send">Send</button>
     </div>
   `;
@@ -248,38 +250,87 @@
     body.scrollTop = body.scrollHeight;
   }
 
-  async function handleLead(userText) {
-    const lower = userText.toLowerCase();
-    const isLeadFormat =
-      lower.includes("name:") ||
-      lower.includes("email:") ||
-      lower.includes("phone:") ||
-      lower.includes("message:");
+  function showQuickButtons() {
+    const wrap = document.createElement("div");
+    wrap.className = "flc-quick";
 
-    if (!isLeadFormat) return false;
+    const buttons = ["services", "pricing", "contact"];
 
-    const lead = parseLead(userText);
+    buttons.forEach((t) => {
+      const b = document.createElement("div");
+      b.className = "flc-qbtn";
+      b.textContent = t;
+      b.onclick = () => {
+        addMsg(t, "flc-user");
+        const reply = findReply(t);
+        setTimeout(() => addMsg(reply, "flc-bot"), 250);
+      };
+      wrap.appendChild(b);
+    });
 
-    if (!lead.name || !lead.message) {
-      addMsg("Please provide at least:\nname: Your Name\nmessage: Your requirement", "flc-bot");
+    body.appendChild(wrap);
+    body.scrollTop = body.scrollHeight;
+  }
+
+  async function handleLeadFlow(userText) {
+    const text = userText.trim();
+
+    if (leadSubmitted) return false;
+
+    // Step 1: Name
+    if (leadStep === 1) {
+      leadData.name = text;
+      leadStep = 2;
+      addMsg("Great. Now enter your email (or type skip).", "flc-bot");
       return true;
     }
 
-    addMsg("Sending your details... Please wait.", "flc-bot");
-
-    try {
-      const result = await submitLead(lead);
-
-      if (result.success) {
-        addMsg("Thank you! Your message was sent successfully. Subrat will contact you soon.", "flc-bot");
-      } else {
-        addMsg("Failed to send. Please try again.", "flc-bot");
-      }
-    } catch {
-      addMsg("Server error. Please try later.", "flc-bot");
+    // Step 2: Email
+    if (leadStep === 2) {
+      if (text.toLowerCase() !== "skip") leadData.email = text;
+      leadStep = 3;
+      addMsg("Enter your phone number (or type skip).", "flc-bot");
+      return true;
     }
 
-    return true;
+    // Step 3: Phone
+    if (leadStep === 3) {
+      if (text.toLowerCase() !== "skip") leadData.phone = text;
+      leadStep = 4;
+      addMsg("Describe your requirement (example: I need a portfolio website).", "flc-bot");
+      return true;
+    }
+
+    // Step 4: Message
+    if (leadStep === 4) {
+      leadData.message = text;
+
+      // ? Basic check
+      if (!leadData.name || !leadData.message) {
+        addMsg("Please provide a valid name and requirement message.", "flc-bot");
+        return true;
+      }
+
+      addMsg("Submitting your details... please wait.", "flc-bot");
+
+      try {
+        const result = await submitLead(leadData);
+
+        if (result.success) {
+          leadSubmitted = true;
+          addMsg("Thank you! Your details are saved. Now you can ask: services / pricing / contact", "flc-bot");
+          showQuickButtons();
+        } else {
+          addMsg("Failed to submit. Please try again.", "flc-bot");
+        }
+      } catch (e) {
+        addMsg("Server error. Please try later.", "flc-bot");
+      }
+
+      return true;
+    }
+
+    return false;
   }
 
   async function sendMessage() {
@@ -289,9 +340,11 @@
     addMsg(msg, "flc-user");
     input.value = "";
 
-    const handled = await handleLead(msg);
-    if (handled) return;
+    // ? Lead first mandatory
+    const leadHandled = await handleLeadFlow(msg);
+    if (leadHandled) return;
 
+    // ? After lead submitted -> rules
     const reply = findReply(msg);
     setTimeout(() => addMsg(reply, "flc-bot"), 250);
   }
@@ -300,10 +353,12 @@
     box.style.display = "flex";
     btn.style.display = "none";
 
-    addMsg(
-      "Hello! I am Subrat's freelancer assistant.\nYou can type: services / pricing / lead / contact",
-      "flc-bot"
-    );
+    // Reset lead for new user
+    leadStep = 1;
+    leadData = { name: "", email: "", phone: "", message: "" };
+    leadSubmitted = false;
+
+    addMsg("Welcome! Before we continue, please enter your name.", "flc-bot");
   };
 
   box.querySelector("#flc-chat-close").onclick = () => {
