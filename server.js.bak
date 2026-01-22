@@ -1,73 +1,94 @@
-const express = require("express");
-const cors = require("cors");
-const dotenv = require("dotenv");
-const mongoose = require("mongoose");
-const path = require("path");
+// In-memory sessions
+const userSessions = {};
+const greetings = ["hi", "hello", "hey", "hii", "hai"];
 
-dotenv.config();
-
-const Lead = require("./models/Lead");
-
-const app = express();
-app.use(cors());
-app.use(express.json());
-
-// ? serve widget.js + admin.html
-app.use(express.static(path.join(__dirname, "public")));
-
-// ? connect MongoDB
-mongoose
-  .connect(process.env.MONGO_URI)
-  .then(() => console.log("? MongoDB Connected"))
-  .catch((err) => console.log("? MongoDB Error:", err.message));
-
-app.get("/", (req, res) => {
-  res.send("? Freelancer Chatbot Widget Running");
-});
-
-/* ------------------------------------------
-   ? Lead Create API (from widget)
------------------------------------------- */
-app.post("/api/leads", async (req, res) => {
+// POST /chat
+app.post("/chat", async (req, res) => {
   try {
-    const { name, email, phone, message } = req.body;
+    const { message, sessionId } = req.body;
+    const userId = sessionId || req.ip;
 
-    // basic validation
-    if (!name || !message) {
-      return res.status(400).json({ error: "Name and Message are required" });
+    if (!message) return res.json({ reply: "Please type a message." });
+
+    if (!userSessions[userId]) {
+      userSessions[userId] = { step: 0, lead: {} };
     }
 
-    const lead = await Lead.create({
-      name: name.trim(),
-      email: (email || "").trim(),
-      phone: (phone || "").trim(),
-      message: message.trim(),
-      source: "Freelancer Website Chatbot"
-    });
+    const session = userSessions[userId];
+    const text = message.trim();
 
-    res.json({ success: true, lead });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
+    // ? STEP 0: Greeting -> Ask Name
+    if (session.step === 0) {
+      if (greetings.includes(text.toLowerCase())) {
+        return res.json({ reply: "May I know your name?" });
+      }
 
-/* ------------------------------------------
-   ? Admin Leads API (secure with ADMIN_KEY)
------------------------------------------- */
-app.get("/api/admin/leads", async (req, res) => {
-  try {
-    const key = req.headers["x-admin-key"];
-
-    if (!key || key !== process.env.ADMIN_KEY) {
-      return res.status(401).json({ error: "Unauthorized" });
+      session.lead.name = text;
+      session.step = 1;
+      return res.json({ reply: "Thanks! Please share your email (or type skip)." });
     }
 
-    const leads = await Lead.find().sort({ createdAt: -1 });
-    res.json({ success: true, leads });
+    // ? STEP 1: Email
+    if (session.step === 1) {
+      if (text.toLowerCase() !== "skip") session.lead.email = text;
+      session.step = 2;
+      return res.json({ reply: "Please share your phone number (or type skip)." });
+    }
+
+    // ? STEP 2: Phone
+    if (session.step === 2) {
+      if (text.toLowerCase() !== "skip") session.lead.phone = text;
+      session.step = 3;
+      return res.json({ reply: "Now tell me your requirement (example: I need website / admin panel)." });
+    }
+
+    // ? STEP 3: Requirement -> Save Lead
+    if (session.step === 3) {
+      session.lead.message = text;
+      session.step = 4;
+
+      // ? Save in MongoDB (leadflc collection)
+      await Lead.create({
+        name: session.lead.name || "",
+        email: session.lead.email || "",
+        phone: session.lead.phone || "",
+        message: session.lead.message || "",
+        source: "Subrat Freelancer Chatbot"
+      });
+
+      return res.json({
+        reply:
+          "Thank you! Your details are saved.\nNow you can type: services / pricing / contact"
+      });
+    }
+
+    // ? STEP 4: Rule-based chatbot
+    const msgLower = text.toLowerCase();
+
+    if (msgLower.includes("service")) {
+      return res.json({
+        reply:
+          "My Services:\n1) Website Development\n2) Admin Panels\n3) APIs / Backend\n4) Chatbots (Rule-based + AI)"
+      });
+    }
+
+    if (msgLower.includes("price") || msgLower.includes("pricing") || msgLower.includes("cost")) {
+      return res.json({
+        reply:
+          "Pricing (Approx):\n• Basic Website: INR 5k - 15k\n• Admin Panel: INR 20k+\n• Chatbot: INR 10k+"
+      });
+    }
+
+    if (msgLower.includes("contact") || msgLower.includes("email") || msgLower.includes("whatsapp")) {
+      return res.json({
+        reply:
+          "Contact:\nEmail: yourmail@gmail.com\nWhatsApp: +91 XXXXX XXXXX"
+      });
+    }
+
+    return res.json({ reply: 'Try: "services", "pricing", "contact"' });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.log(err.message);
+    res.status(500).json({ reply: "Server error. Please try again." });
   }
 });
-
-const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log("? Server running on port", PORT));
