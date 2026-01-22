@@ -11,8 +11,4 @@ const leadSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// ? indexes (for fast duplicate check)
-leadSchema.index({ email: 1 });
-leadSchema.index({ phone: 1 });
-
 module.exports = mongoose.model("leadflc", leadSchema);
