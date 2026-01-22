@@ -298,6 +298,7 @@ function loadChat() {
 function clearChat() {
   localStorage.removeItem(STORAGE_KEY);
   localStorage.removeItem("flc_session_id");
+  localStorage.removeItem("flc_lead_done"); // ? ADD THIS
 
   unreadCount = 0;
   updateBadge();
@@ -307,6 +308,7 @@ function clearChat() {
 
   saveChat();
 }
+
 
 function updateBadge() {
   const badge = document.getElementById("badge");
@@ -359,16 +361,22 @@ async function send() {
     sessionId = "flc_" + Date.now() + "_" + Math.random().toString(16).slice(2);
     localStorage.setItem("flc_session_id", sessionId);
   }
+  const leadDone = localStorage.getItem("flc_lead_done") === "yes";
 
   try {
     // ? Call your render backend /chat
     const res = await fetch("https://subratflc-chatbot.onrender.com/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: msg, sessionId })
+      body: JSON.stringify({ message: msg, sessionId, leadDone })
+
     });
 
     const data = await res.json();
+    // ? once lead submitted, remember it
+	if ((data.reply || "").toLowerCase().includes("details are saved")) {
+	  localStorage.setItem("flc_lead_done", "yes");
+	}
 
     const typingDiv = document.getElementById(typingId);
     if (typingDiv) typingDiv.remove();

@@ -46,7 +46,7 @@ const greetings = ["hi", "hello", "hey", "hii", "hai"];
 ================================================== */
 app.post("/chat", async (req, res) => {
   try {
-    const { message, sessionId } = req.body;
+    const { message, sessionId, leadDone } = req.body;
     const userId = sessionId || req.ip;
 
     if (!message) return res.json({ reply: "Please type a message." });
@@ -91,21 +91,14 @@ app.post("/chat", async (req, res) => {
     }
 
     // ? STEP 3: Requirement -> Save Lead
-    if (session.step === 3) {
-      session.lead.message = text;
-      session.step = 4;
+    // ? STEP 3: Requirement -> Save Lead (NO DUPLICATE RESTRICTION)
+	if (session.step === 3) {
+	  session.lead.message = text;
+	  session.step = 4;
 
-		 const email = (session.lead.email || "").trim();
-	const phone = (session.lead.phone || "").trim();
+	  const email = (session.lead.email || "").trim();
+	  const phone = (session.lead.phone || "").trim();
 
-	const existingLead = await Lead.findOne({
-	  $or: [
-		...(email ? [{ email }] : []),
-		...(phone ? [{ phone }] : [])
-	  ]
-	});
-
-	if (!existingLead) {
 	  await Lead.create({
 		name: session.lead.name || "",
 		email,
@@ -118,14 +111,8 @@ app.post("/chat", async (req, res) => {
 		reply:
 		  "Thank you! Your details are saved.\nNow you can type: services / pricing / contact",
 	  });
-	} else {
-	  return res.json({
-		reply:
-		  "Your details are already saved.\nNow you can type: services / pricing / contact",
-	  });
 	}
 
-    }
 
     // ? STEP 4: Rule-based replies
     const msgLower = text.toLowerCase();

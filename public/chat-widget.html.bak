@@ -136,10 +136,17 @@
       line-height: 1.25;
     }
 
-	 .user {
+	.user {
 	  background: linear-gradient(135deg, #38bdf8, #2563eb);
 	  color: #fff;
+	  align-self: flex-end;
+	  margin-left: auto;
+	  text-align: right;
+	  border-top-right-radius: 6px;
+	  border-bottom-right-radius: 6px;
 	}
+
+
 
 
     .bot {
@@ -291,6 +298,7 @@ function loadChat() {
 function clearChat() {
   localStorage.removeItem(STORAGE_KEY);
   localStorage.removeItem("flc_session_id");
+  localStorage.removeItem("flc_lead_done"); // ? ADD THIS
 
   unreadCount = 0;
   updateBadge();
@@ -300,6 +308,7 @@ function clearChat() {
 
   saveChat();
 }
+
 
 function updateBadge() {
   const badge = document.getElementById("badge");
@@ -352,13 +361,15 @@ async function send() {
     sessionId = "flc_" + Date.now() + "_" + Math.random().toString(16).slice(2);
     localStorage.setItem("flc_session_id", sessionId);
   }
+  const leadDone = localStorage.getItem("flc_lead_done") === "yes";
 
   try {
     // ? Call your render backend /chat
     const res = await fetch("https://subratflc-chatbot.onrender.com/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: msg, sessionId })
+      body: JSON.stringify({ message: msg, sessionId, leadDone })
+
     });
 
     const data = await res.json();

@@ -46,7 +46,7 @@ const greetings = ["hi", "hello", "hey", "hii", "hai"];
 ================================================== */
 app.post("/chat", async (req, res) => {
   try {
-    const { message, sessionId } = req.body;
+    const { message, sessionId, leadDone } = req.body;
     const userId = sessionId || req.ip;
 
     if (!message) return res.json({ reply: "Please type a message." });
@@ -54,6 +54,10 @@ app.post("/chat", async (req, res) => {
     if (!userSessions[userId]) {
       userSessions[userId] = { step: 0, lead: {} };
     }
+    
+	if (leadDone === true) {
+	 userSessions[userId].step = 4;
+	}
 
     const session = userSessions[userId];
     const text = message.trim();
