@@ -3,6 +3,7 @@ const cors = require("cors");
 const dotenv = require("dotenv");
 const mongoose = require("mongoose");
 const path = require("path");
+const { Parser } = require("json2csv");
 
 dotenv.config();
 
@@ -39,7 +40,6 @@ app.get("/", (req, res) => {
    ? In-memory sessions for Lead flow
 ================================================== */
 const userSessions = {};
-const greetings = ["hi", "hello", "hey", "hii", "hai"];
 
 /* ==================================================
    ? CHAT API  (Lead First + Rule Based)
@@ -54,71 +54,78 @@ app.post("/chat", async (req, res) => {
     if (!userSessions[userId]) {
       userSessions[userId] = { step: 0, lead: {} };
     }
-    
-	if (leadDone === true) {
-	 userSessions[userId].step = 4;
-	}
 
     const session = userSessions[userId];
     const text = message.trim();
 
-    // ? STEP 0: Greeting -> Ask Name
-    if (session.step === 0) {
-      if (greetings.includes(text.toLowerCase())) {
-        return res.json({ reply: "May I know your name?" });
-      }
+    // ? if lead already submitted, directly go to rule-based step
+    if (leadDone === true) {
+      session.step = 5;
+    }
 
-      session.lead.name = text;
+    /* ---------------------------
+       ? LEAD COLLECTION FLOW
+       --------------------------- */
+
+    // ? STEP 0: Always ask name (DO NOT SAVE anything here)
+    if (session.step === 0) {
       session.step = 1;
+      return res.json({ reply: "May I know your name?" });
+    }
+
+    // ? STEP 1: Save name -> Ask email
+    if (session.step === 1) {
+      session.lead.name = text;
+      session.step = 2;
       return res.json({
         reply: "Thanks! Please share your email (or type skip).",
       });
     }
 
-    // ? STEP 1: Email
-    if (session.step === 1) {
+    // ? STEP 2: Save email -> Ask phone
+    if (session.step === 2) {
       if (text.toLowerCase() !== "skip") session.lead.email = text;
-      session.step = 2;
+      session.step = 3;
       return res.json({
         reply: "Please share your phone number (or type skip).",
       });
     }
 
-    // ? STEP 2: Phone
-    if (session.step === 2) {
+    // ? STEP 3: Save phone -> Ask requirement
+    if (session.step === 3) {
       if (text.toLowerCase() !== "skip") session.lead.phone = text;
-      session.step = 3;
+      session.step = 4;
       return res.json({
         reply:
           "Now tell me your requirement (example: I need website / admin panel etc.).",
       });
     }
 
-    // ? STEP 3: Requirement -> Save Lead
-    // ? STEP 3: Requirement -> Save Lead (NO DUPLICATE RESTRICTION)
-	if (session.step === 3) {
-	  session.lead.message = text;
-	  session.step = 4;
+    // ? STEP 4: Save requirement -> Store Lead -> Go rule mode
+    if (session.step === 4) {
+      session.lead.message = text;
+      session.step = 5;
 
-	  const email = (session.lead.email || "").trim();
-	  const phone = (session.lead.phone || "").trim();
+      const email = (session.lead.email || "").trim();
+      const phone = (session.lead.phone || "").trim();
 
-	  await Lead.create({
-		name: session.lead.name || "",
-		email,
-		phone,
-		message: session.lead.message || "",
-		source: "Subrat Freelancer Chatbot",
-	  });
+      await Lead.create({
+        name: session.lead.name || "",
+        email,
+        phone,
+        message: session.lead.message || "",
+        source: "Subrat Freelancer Chatbot",
+      });
 
-	  return res.json({
-		reply:
-		  "Thank you! Your details are saved.\nNow you can type: services / pricing / contact",
-	  });
-	}
+      return res.json({
+        reply:
+          "Thank you! Your details are saved.\nNow you can type: services / pricing / contact",
+      });
+    }
 
-
-    // ? STEP 4: Rule-based replies
+    /* ---------------------------
+       ? STEP 5: Rule-based replies
+       --------------------------- */
     const msgLower = text.toLowerCase();
 
     if (msgLower.includes("service")) {
@@ -199,11 +206,10 @@ app.get("/api/admin/leads", async (req, res) => {
   }
 });
 
-
-const { Parser } = require("json2csv");
-
-// ? EXPORT CSV
-  app.get("/api/admin/leads/export", async (req, res) => {
+/* ==================================================
+   ? EXPORT CSV
+================================================== */
+app.get("/api/admin/leads/export", async (req, res) => {
   try {
     const key = req.headers["x-admin-key"];
 
