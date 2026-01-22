@@ -1,11 +1,20 @@
 (function () {
   const API_BASE = "https://subratflc-chatbot.onrender.com";
-  const BOT_NAME = "Subrat Assistant";
 
+  // ? Theme Colors (match your website)
+  const THEME_BG = "#111111";        // main dark
+  const THEME_ACCENT = "#ffffff";    // white
+  const THEME_BTN = "#111111";       // button
+  const THEME_BTN_TEXT = "#ffffff";  // button text
+
+  const BOT_NAME = "Subrat Assistant";
+  const BOT_SUBTITLE = "Freelancer Support Chat";
+
+  // ? RULES
   const RULES = [
     {
       keywords: ["hi", "hello", "hey"],
-      reply: "Hello! Welcome to Subrat’s freelance support. How can I help you today?"
+      reply: "Hello! I am Subrat's freelancer assistant. How can I help you today?"
     },
     {
       keywords: ["service", "services", "what do you do"],
@@ -15,17 +24,17 @@
     {
       keywords: ["pricing", "price", "cost", "charges", "budget"],
       reply:
-        "Pricing (Approx):\n• Basic Website: ?5k - ?15k\n• Admin Panel: ?20k+\n• Chatbot: ?10k+\n\nType: lead to send your requirement."
+        "Pricing (Approx):\n• Basic Website: INR 5k - 15k\n• Admin Panel: INR 20k+\n• Chatbot: INR 10k+\n\nType: lead to send your requirement."
     },
     {
       keywords: ["contact", "email", "phone", "whatsapp"],
       reply:
-        "You can contact me using the website form.\nOr type: lead (to send details here)."
+        "You can contact using the website form.\nOr type: lead to send details here."
     },
     {
       keywords: ["hire", "freelance", "available"],
       reply:
-        "Yes, I’m available for freelance work.\nType: lead to send your requirement."
+        "Yes, I am available for freelance work.\nType: lead to send your requirement."
     },
     {
       keywords: ["lead", "submit", "send details"],
@@ -41,9 +50,10 @@
         if (text.includes(kw)) return rule.reply;
       }
     }
-    return "Sorry, I didn’t understand.\nTry: services / pricing / lead / contact";
+    return "Sorry, I did not understand.\nTry: services / pricing / lead / contact";
   }
 
+  // ? Lead Parser
   function parseLead(text) {
     const lines = text.split("\n").map((l) => l.trim());
     let name = "", email = "", phone = "", message = "";
@@ -72,57 +82,80 @@
     return res.json();
   }
 
-  // ? Modern UI style
+  // ? UI (No emoji)
   const style = document.createElement("style");
   style.innerHTML = `
     #flc-chat-btn{
-      position:fixed; bottom:20px; right:20px;
-      width:60px;height:60px;border-radius:50%;
-      background:linear-gradient(135deg,#111,#333);
-      color:#fff;display:flex;
-      align-items:center;justify-content:center;
-      font-size:22px;cursor:pointer;z-index:99999;
-      box-shadow:0 15px 30px rgba(0,0,0,.25);
+      position:fixed; bottom:22px; right:22px;
+      width:58px; height:58px;
+      border-radius:50%;
+      background:${THEME_BG};
+      color:${THEME_ACCENT};
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:18px;
+      cursor:pointer;
+      z-index:99999;
+      box-shadow:0 15px 35px rgba(0,0,0,.25);
       transition: transform .2s ease;
+      user-select:none;
     }
     #flc-chat-btn:hover{ transform: scale(1.05); }
 
     #flc-chat-box{
-      position:fixed; bottom:95px; right:20px;
-      width:360px; height:520px; background:#fff;
-      border-radius:18px; overflow:hidden;
-      box-shadow:0 15px 40px rgba(0,0,0,.25);
-      display:none; flex-direction:column;
+      position:fixed;
+      bottom:95px;
+      right:22px;
+      width:360px;
+      height:520px;
+      background:#fff;
+      border-radius:18px;
+      overflow:hidden;
+      box-shadow:0 18px 40px rgba(0,0,0,.25);
+      display:none;
+      flex-direction:column;
       z-index:99999;
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
     }
 
     #flc-chat-head{
-      background:linear-gradient(135deg,#111,#2b2b2b);
-      color:#fff; padding:14px 16px;
-      display:flex; justify-content:space-between; align-items:center;
+      background:${THEME_BG};
+      color:${THEME_ACCENT};
+      padding:14px 16px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
     }
     #flc-chat-head .title{
-      font-size:15px; font-weight:700;
+      font-size:15px;
+      font-weight:700;
       letter-spacing:.2px;
     }
     #flc-chat-head .subtitle{
-      font-size:12px; opacity:.85;
+      font-size:12px;
+      opacity:.85;
       margin-top:2px;
     }
+
     #flc-chat-close{
       cursor:pointer;
       font-size:18px;
-      opacity:.85;
-      padding:6px 8px;
+      opacity:.9;
+      padding:6px 10px;
       border-radius:10px;
       transition: background .2s ease;
+      user-select:none;
     }
-    #flc-chat-close:hover{ background:rgba(255,255,255,.12); opacity:1; }
+    #flc-chat-close:hover{
+      background:rgba(255,255,255,.12);
+    }
 
     #flc-chat-body{
-      flex:1; padding:14px;
-      overflow:auto; background:#f5f6f8;
+      flex:1;
+      padding:14px;
+      overflow:auto;
+      background:#f5f6f8;
     }
 
     .flc-msg{
@@ -132,12 +165,12 @@
       max-width:85%;
       white-space:pre-line;
       font-size:13.5px;
-      line-height:1.4;
+      line-height:1.45;
       box-shadow:0 6px 16px rgba(0,0,0,.06);
     }
     .flc-user{
-      background:#111;
-      color:#fff;
+      background:${THEME_BG};
+      color:${THEME_ACCENT};
       margin-left:auto;
       border-bottom-right-radius:6px;
     }
@@ -149,7 +182,8 @@
     }
 
     #flc-chat-input{
-      display:flex; gap:8px;
+      display:flex;
+      gap:8px;
       padding:12px;
       border-top:1px solid #eee;
       background:#fff;
@@ -166,19 +200,20 @@
       padding:12px 14px;
       border:none;
       border-radius:12px;
-      background:#111;
-      color:#fff;
+      background:${THEME_BTN};
+      color:${THEME_BTN_TEXT};
       cursor:pointer;
       font-size:14px;
       font-weight:600;
     }
-    #flc-chat-input button:hover{ opacity:.9; }
+    #flc-chat-input button:hover{ opacity:.92; }
   `;
   document.head.appendChild(style);
 
+  // ? Chat Button (use text icon, no emoji)
   const btn = document.createElement("div");
   btn.id = "flc-chat-btn";
-  btn.innerHTML = "??";
+  btn.innerHTML = "CHAT";
 
   const box = document.createElement("div");
   box.id = "flc-chat-box";
@@ -186,9 +221,9 @@
     <div id="flc-chat-head">
       <div>
         <div class="title">${BOT_NAME}</div>
-        <div class="subtitle">Freelancer Support Chat</div>
+        <div class="subtitle">${BOT_SUBTITLE}</div>
       </div>
-      <div id="flc-chat-close">?</div>
+      <div id="flc-chat-close">X</div>
     </div>
 
     <div id="flc-chat-body"></div>
@@ -258,14 +293,15 @@
     if (handled) return;
 
     const reply = findReply(msg);
-    setTimeout(() => addMsg(reply, "flc-bot"), 300);
+    setTimeout(() => addMsg(reply, "flc-bot"), 250);
   }
 
   btn.onclick = () => {
     box.style.display = "flex";
     btn.style.display = "none";
+
     addMsg(
-      "Hello! I’m Subrat’s freelancer assistant.\nYou can type: services / pricing / lead / contact",
+      "Hello! I am Subrat's freelancer assistant.\nYou can type: services / pricing / lead / contact",
       "flc-bot"
     );
   };
