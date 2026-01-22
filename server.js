@@ -86,7 +86,7 @@ app.post("/chat", async (req, res) => {
       session.step = 3;
       return res.json({
         reply:
-          "Now tell me your requirement (example: I need website / admin panel).",
+          "Now tell me your requirement (example: I need website / admin panel etc.).",
       });
     }
 
@@ -95,18 +95,36 @@ app.post("/chat", async (req, res) => {
       session.lead.message = text;
       session.step = 4;
 
-      await Lead.create({
-        name: session.lead.name || "",
-        email: session.lead.email || "",
-        phone: session.lead.phone || "",
-        message: session.lead.message || "",
-        source: "Subrat Freelancer Chatbot",
-      });
+		 const email = (session.lead.email || "").trim();
+	const phone = (session.lead.phone || "").trim();
 
-      return res.json({
-        reply:
-          "Thank you! Your details are saved.\nNow you can type: services / pricing / contact",
-      });
+	const existingLead = await Lead.findOne({
+	  $or: [
+		...(email ? [{ email }] : []),
+		...(phone ? [{ phone }] : [])
+	  ]
+	});
+
+	if (!existingLead) {
+	  await Lead.create({
+		name: session.lead.name || "",
+		email,
+		phone,
+		message: session.lead.message || "",
+		source: "Subrat Freelancer Chatbot",
+	  });
+
+	  return res.json({
+		reply:
+		  "Thank you! Your details are saved.\nNow you can type: services / pricing / contact",
+	  });
+	} else {
+	  return res.json({
+		reply:
+		  "Your details are already saved.\nNow you can type: services / pricing / contact",
+	  });
+	}
+
     }
 
     // ? STEP 4: Rule-based replies

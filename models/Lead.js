@@ -6,9 +6,13 @@ const leadSchema = new mongoose.Schema(
     email: String,
     phone: String,
     message: String,
-    source: String,
+    source: String
   },
   { timestamps: true }
 );
+
+// ? indexes (for fast duplicate check)
+leadSchema.index({ email: 1 });
+leadSchema.index({ phone: 1 });
 
 module.exports = mongoose.model("leadflc", leadSchema);

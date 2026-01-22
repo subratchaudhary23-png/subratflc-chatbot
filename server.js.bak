@@ -1,8 +1,49 @@
-// In-memory sessions
+const express = require("express");
+const cors = require("cors");
+const dotenv = require("dotenv");
+const mongoose = require("mongoose");
+const path = require("path");
+
+dotenv.config();
+
+const Lead = require("./models/Lead");
+
+const app = express();
+
+// ? CORS (allow all)
+app.use(
+  cors({
+    origin: "*",
+    methods: ["GET", "POST"],
+    allowedHeaders: ["Content-Type", "x-admin-key"],
+  })
+);
+
+app.use(express.json());
+
+// ? Serve widget.js + chat-widget.html + admin.html
+app.use(express.static(path.join(__dirname, "public")));
+
+// ? MongoDB connect
+mongoose
+  .connect(process.env.MONGO_URI)
+  .then(() => console.log("? MongoDB Connected"))
+  .catch((err) => console.log("? MongoDB Error:", err.message));
+
+// ? Home
+app.get("/", (req, res) => {
+  res.send("? Subrat Freelancer Chatbot Running");
+});
+
+/* ==================================================
+   ? In-memory sessions for Lead flow
+================================================== */
 const userSessions = {};
 const greetings = ["hi", "hello", "hey", "hii", "hai"];
 
-// POST /chat
+/* ==================================================
+   ? CHAT API  (Lead First + Rule Based)
+================================================== */
 app.post("/chat", async (req, res) => {
   try {
     const { message, sessionId } = req.body;
@@ -25,21 +66,28 @@ app.post("/chat", async (req, res) => {
 
       session.lead.name = text;
       session.step = 1;
-      return res.json({ reply: "Thanks! Please share your email (or type skip)." });
+      return res.json({
+        reply: "Thanks! Please share your email (or type skip).",
+      });
     }
 
     // ? STEP 1: Email
     if (session.step === 1) {
       if (text.toLowerCase() !== "skip") session.lead.email = text;
       session.step = 2;
-      return res.json({ reply: "Please share your phone number (or type skip)." });
+      return res.json({
+        reply: "Please share your phone number (or type skip).",
+      });
     }
 
     // ? STEP 2: Phone
     if (session.step === 2) {
       if (text.toLowerCase() !== "skip") session.lead.phone = text;
       session.step = 3;
-      return res.json({ reply: "Now tell me your requirement (example: I need website / admin panel)." });
+      return res.json({
+        reply:
+          "Now tell me your requirement (example: I need website / admin panel etc).",
+      });
     }
 
     // ? STEP 3: Requirement -> Save Lead
@@ -47,48 +95,121 @@ app.post("/chat", async (req, res) => {
       session.lead.message = text;
       session.step = 4;
 
-      // ? Save in MongoDB (leadflc collection)
-      await Lead.create({
-        name: session.lead.name || "",
-        email: session.lead.email || "",
-        phone: session.lead.phone || "",
-        message: session.lead.message || "",
-        source: "Subrat Freelancer Chatbot"
-      });
+		 const email = (session.lead.email || "").trim();
+	const phone = (session.lead.phone || "").trim();
 
-      return res.json({
-        reply:
-          "Thank you! Your details are saved.\nNow you can type: services / pricing / contact"
-      });
+	const existingLead = await Lead.findOne({
+	  $or: [
+		...(email ? [{ email }] : []),
+		...(phone ? [{ phone }] : [])
+	  ]
+	});
+
+	if (!existingLead) {
+	  await Lead.create({
+		name: session.lead.name || "",
+		email,
+		phone,
+		message: session.lead.message || "",
+		source: "Subrat Freelancer Chatbot",
+	  });
+
+	  return res.json({
+		reply:
+		  "Thank you! Your details are saved.\nNow you can type: services / pricing / contact",
+	  });
+	} else {
+	  return res.json({
+		reply:
+		  "Your details are already saved.\nNow you can type: services / pricing / contact",
+	  });
+	}
+
     }
 
-    // ? STEP 4: Rule-based chatbot
+    // ? STEP 4: Rule-based replies
     const msgLower = text.toLowerCase();
 
     if (msgLower.includes("service")) {
       return res.json({
         reply:
-          "My Services:\n1) Website Development\n2) Admin Panels\n3) APIs / Backend\n4) Chatbots (Rule-based + AI)"
+          "My Services:\n1) Website Development\n2) Admin Panels\n3) APIs / Backend\n4) Chatbots (Rule-based + AI)",
       });
     }
 
-    if (msgLower.includes("price") || msgLower.includes("pricing") || msgLower.includes("cost")) {
+    if (
+      msgLower.includes("price") ||
+      msgLower.includes("pricing") ||
+      msgLower.includes("cost")
+    ) {
       return res.json({
         reply:
-          "Pricing (Approx):\n• Basic Website: INR 5k - 15k\n• Admin Panel: INR 20k+\n• Chatbot: INR 10k+"
+          "Pricing (Approx):\n• Basic Website: INR 5k - 15k\n• Admin Panel: INR 20k+\n• Chatbot: INR 10k+",
       });
     }
 
-    if (msgLower.includes("contact") || msgLower.includes("email") || msgLower.includes("whatsapp")) {
+    if (
+      msgLower.includes("contact") ||
+      msgLower.includes("email") ||
+      msgLower.includes("whatsapp")
+    ) {
       return res.json({
-        reply:
-          "Contact:\nEmail: yourmail@gmail.com\nWhatsApp: +91 XXXXX XXXXX"
+        reply: "Contact:\nEmail: yourmail@gmail.com\nWhatsApp: +91 XXXXX XXXXX",
       });
     }
 
     return res.json({ reply: 'Try: "services", "pricing", "contact"' });
   } catch (err) {
-    console.log(err.message);
+    console.log("? /chat Error:", err.message);
     res.status(500).json({ reply: "Server error. Please try again." });
   }
 });
+
+/* ==================================================
+   ? Lead API (Optional direct lead saving)
+================================================== */
+app.post("/api/leads", async (req, res) => {
+  try {
+    const { name, email, phone, message } = req.body;
+
+    if (!name || !message) {
+      return res.status(400).json({ error: "Name and message required" });
+    }
+
+    const lead = await Lead.create({
+      name,
+      email,
+      phone,
+      message,
+      source: "Subrat Freelancer Chatbot",
+    });
+
+    res.json({ success: true, lead });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/* ==================================================
+   ? Admin Leads API
+================================================== */
+app.get("/api/admin/leads", async (req, res) => {
+  try {
+    const key = req.headers["x-admin-key"];
+
+    if (!key || key !== process.env.ADMIN_KEY) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const leads = await Lead.find().sort({ createdAt: -1 });
+    res.json({ success: true, total: leads.length, leads });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/* ==================================================
+   ? Start server
+================================================== */
+const PORT = process.env.PORT || 10000;
+app.listen(PORT, () => console.log("? Server running on port", PORT));
