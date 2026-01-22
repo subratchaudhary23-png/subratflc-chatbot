@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin Leads | Subrat Freelancer</title>
+
+  <style>
+    body{font-family:Arial;background:#f6f6f6;padding:20px;}
+    .box{max-width:1100px;margin:auto;background:#fff;padding:20px;border-radius:12px;box-shadow:0 10px 25px rgba(0,0,0,.1);}
+    h2{margin:0 0 15px;}
+    input{padding:10px;width:250px;border-radius:8px;border:1px solid #ddd;}
+    button{padding:10px 14px;border:none;border-radius:8px;background:#111;color:#fff;cursor:pointer;}
+    table{width:100%;border-collapse:collapse;margin-top:20px;}
+    th,td{padding:10px;border-bottom:1px solid #eee;text-align:left;font-size:14px;}
+    th{background:#111;color:#fff;}
+    .small{font-size:12px;color:#666;}
+  </style>
+</head>
+<body>
+
+  <div class="box">
+    <h2>? Leadflc Leads Table</h2>
+    <p class="small">Enter Admin Key to view saved chatbot leads.</p>
+
+    <input type="password" id="key" placeholder="Enter Admin Key"/>
+    <button onclick="loadLeads()">Load Leads</button>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Name</th>
+          <th>Email</th>
+          <th>Phone</th>
+          <th>Message</th>
+          <th>Source</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+
+<script>
+  const API_BASE = location.origin;
+
+  async function loadLeads() {
+    const adminKey = document.getElementById("key").value.trim();
+
+    const res = await fetch(API_BASE + "/api/admin/leads", {
+      headers: { "x-admin-key": adminKey }
+    });
+
+    const data = await res.json();
+
+    if (!data.success) {
+      alert(data.error || "Unauthorized");
+      return;
+    }
+
+    const tbody = document.getElementById("tbody");
+    tbody.innerHTML = "";
+
+    data.leads.forEach((lead) => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${new Date(lead.createdAt).toLocaleString()}</td>
+        <td>${lead.name || ""}</td>
+        <td>${lead.email || ""}</td>
+        <td>${lead.phone || ""}</td>
+        <td>${lead.message || ""}</td>
+        <td>${lead.source || ""}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+</script>
+
+</body>
+</html>

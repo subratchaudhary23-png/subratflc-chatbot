@@ -6,73 +6,431 @@
   <title>Admin Leads | Subrat Freelancer</title>
 
   <style>
-    body{font-family:Arial;background:#f6f6f6;padding:20px;}
-    .box{max-width:1100px;margin:auto;background:#fff;padding:20px;border-radius:12px;box-shadow:0 10px 25px rgba(0,0,0,.1);}
-    h2{margin:0 0 15px;}
-    input{padding:10px;width:250px;border-radius:8px;border:1px solid #ddd;}
-    button{padding:10px 14px;border:none;border-radius:8px;background:#111;color:#fff;cursor:pointer;}
-    table{width:100%;border-collapse:collapse;margin-top:20px;}
-    th,td{padding:10px;border-bottom:1px solid #eee;text-align:left;font-size:14px;}
-    th{background:#111;color:#fff;}
-    .small{font-size:12px;color:#666;}
+    body{
+      font-family: Arial;
+      background:#f5f6f8;
+      padding:20px;
+      margin:0;
+    }
+
+    .card{
+      max-width:1100px;
+      margin:auto;
+      background:#fff;
+      padding:18px;
+      border-radius:14px;
+      border:1px solid #eee;
+      box-shadow:0 10px 30px rgba(0,0,0,0.07);
+    }
+
+    .row{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
+      flex-wrap:wrap;
+    }
+
+    h2{
+      margin:0;
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+
+    .sub{
+      margin-top:6px;
+      margin-bottom:0;
+      font-size:13px;
+      color:#666;
+    }
+
+    .actions{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      flex-wrap:wrap;
+      margin-top:14px;
+    }
+
+    input{
+      padding:12px;
+      border-radius:10px;
+      border:1px solid #ddd;
+      outline:none;
+      font-size:14px;
+    }
+
+    .btn{
+      padding:10px 14px;
+      border-radius:10px;
+      border:none;
+      cursor:pointer;
+      font-weight:700;
+    }
+
+    .btn-refresh{ background:#111; color:#fff; }
+    .btn-csv{ background:#0275d8; color:#fff; }
+    .btn-sort{ background:#fff; border:1px solid #ddd; color:#111; }
+    .btn-logout{ background:#d9534f; color:#fff; }
+
+    .tableWrap{
+      margin-top:16px;
+      border-radius:12px;
+      overflow:hidden;
+      border:1px solid #eee;
+    }
+
+    table{ width:100%; border-collapse:collapse; }
+    th,td{ padding:12px 14px; font-size:14px; text-align:left; }
+    th{ background:#f2f2f2; color:#111; font-size:13px; }
+    td{ border-top:1px solid #eee; color:#111; }
+
+    .wa{
+      display:inline-block;
+      padding:7px 10px;
+      border-radius:10px;
+      background:#25D366;
+      color:white;
+      text-decoration:none;
+      font-weight:700;
+      font-size:13px;
+    }
+
+    .pagination{
+      margin-top:14px;
+      display:flex;
+      gap:10px;
+      justify-content:center;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+
+    .pageBtn{
+      padding:8px 12px;
+      border-radius:10px;
+      border:1px solid #ddd;
+      background:white;
+      cursor:pointer;
+      font-weight:700;
+    }
+    .pageBtn:disabled{
+      opacity:.5;
+      cursor:not-allowed;
+    }
+
+    .loginWrap{
+      min-height:100vh;
+      display:grid;
+      place-items:center;
+      padding:20px;
+    }
+
+    .loginCard{
+      width:100%;
+      max-width:420px;
+      background:#fff;
+      padding:18px;
+      border-radius:14px;
+      border:1px solid #eee;
+      box-shadow:0 10px 30px rgba(0,0,0,0.07);
+    }
+
+    .err{ color:red; margin-top:10px; }
   </style>
 </head>
 <body>
 
-  <div class="box">
-    <h2>? Leadflc Leads Table</h2>
-    <p class="small">Enter Admin Key to view saved chatbot leads.</p>
+<div id="loginScreen" class="loginWrap" style="display:none;">
+  <div class="loginCard">
+    <h2>Admin Login</h2>
+    <p class="sub">Enter Admin Key to view leads</p>
 
-    <input type="password" id="key" placeholder="Enter Admin Key"/>
-    <button onclick="loadLeads()">Load Leads</button>
+    <input type="password" id="inputKey" placeholder="Enter Admin Key" style="width:100%; margin-top:12px;" />
+    <button class="btn btn-refresh" style="width:100%; margin-top:12px;" onclick="login()">Login</button>
 
-    <table>
-      <thead>
-        <tr>
-          <th>Date</th>
-          <th>Name</th>
-          <th>Email</th>
-          <th>Phone</th>
-          <th>Message</th>
-          <th>Source</th>
-        </tr>
-      </thead>
-      <tbody id="tbody"></tbody>
-    </table>
+    <div id="loginErr" class="err"></div>
   </div>
+</div>
+
+<div id="dashScreen" style="display:none;">
+  <div class="card">
+
+    <div class="row">
+      <div>
+        <h2>Leads Dashboard</h2>
+        <p class="sub" id="summaryText">Total Leads: 0</p>
+      </div>
+
+      <button class="btn btn-logout" onclick="logout()">Logout</button>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-refresh" onclick="fetchLeads()">Refresh</button>
+      <button class="btn btn-csv" onclick="downloadCSV()">Download CSV</button>
+      <button class="btn btn-sort" onclick="toggleSort()" id="sortBtn">Sort: Newest</button>
+
+      <input
+        id="search"
+        placeholder="Search name / email / phone..."
+        style="flex:1; min-width:220px;"
+        oninput="onSearchChange()"
+      />
+    </div>
+
+    <div id="status" class="sub" style="margin-top:10px;"></div>
+    <div id="error" class="err"></div>
+
+    <div class="tableWrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Phone</th>
+            <th>Message</th>
+            <th>Date</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+
+    <div class="pagination">
+      <button class="pageBtn" id="firstBtn" onclick="goFirst()">First</button>
+      <button class="pageBtn" id="prevBtn" onclick="goPrev()">Prev</button>
+
+      <div style="font-size:14px;color:#333;">
+        Page <b id="pageNum">1</b> of <b id="totalPages">1</b>
+      </div>
+
+      <button class="pageBtn" id="nextBtn" onclick="goNext()">Next</button>
+      <button class="pageBtn" id="lastBtn" onclick="goLast()">Last</button>
+    </div>
+
+  </div>
+</div>
 
 <script>
   const API_BASE = location.origin;
 
-  async function loadLeads() {
-    const adminKey = document.getElementById("key").value.trim();
+  let adminKey = sessionStorage.getItem("ADMIN_KEY") || "";
+  let leads = [];
 
-    const res = await fetch(API_BASE + "/api/admin/leads", {
-      headers: { "x-admin-key": adminKey }
-    });
+  let search = "";
+  let sortNewest = true;
 
-    const data = await res.json();
+  let page = 1;
+  const pageSize = 10;
 
-    if (!data.success) {
-      alert(data.error || "Unauthorized");
+  function normalizePhoneForWhatsApp(text){
+    if(!text) return "";
+    return text.replace(/[^\d]/g, "");
+  }
+
+  function showLogin(){
+    document.getElementById("loginScreen").style.display = "grid";
+    document.getElementById("dashScreen").style.display = "none";
+  }
+
+  function showDash(){
+    document.getElementById("loginScreen").style.display = "none";
+    document.getElementById("dashScreen").style.display = "block";
+  }
+
+  function login(){
+    const key = document.getElementById("inputKey").value.trim();
+    if(!key) return;
+
+    sessionStorage.setItem("ADMIN_KEY", key);
+    adminKey = key;
+    document.getElementById("inputKey").value = "";
+    document.getElementById("loginErr").innerText = "";
+
+    fetchLeads();
+  }
+
+  function logout(){
+    sessionStorage.removeItem("ADMIN_KEY");
+    adminKey = "";
+    leads = [];
+    showLogin();
+  }
+
+  async function fetchLeads(){
+    if(!adminKey){
+      showLogin();
       return;
     }
+
+    showDash();
+    document.getElementById("status").innerText = "Loading...";
+    document.getElementById("error").innerText = "";
+
+    try{
+      const res = await fetch(API_BASE + "/api/admin/leads", {
+        headers: { "x-admin-key": adminKey }
+      });
+
+      const data = await res.json();
+
+      if(!res.ok || !data.success){
+        document.getElementById("error").innerText = data?.error || "Unauthorized";
+        leads = [];
+        render();
+        return;
+      }
+
+      leads = data.leads || [];
+      render();
+    }catch(e){
+      document.getElementById("error").innerText = "Server error";
+      leads = [];
+      render();
+    }finally{
+      document.getElementById("status").innerText = "";
+    }
+  }
+
+  async function downloadCSV(){
+    document.getElementById("error").innerText = "";
+
+    try{
+      const res = await fetch(API_BASE + "/api/admin/leads/export", {
+        headers: { "x-admin-key": adminKey }
+      });
+
+      if(!res.ok){
+        const data = await res.json();
+        document.getElementById("error").innerText = data?.error || "Unauthorized";
+        return;
+      }
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "leadflc-leads.csv";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+
+      window.URL.revokeObjectURL(url);
+    }catch(e){
+      document.getElementById("error").innerText = "CSV download failed";
+    }
+  }
+
+  function toggleSort(){
+    sortNewest = !sortNewest;
+    page = 1;
+    document.getElementById("sortBtn").innerText = "Sort: " + (sortNewest ? "Newest" : "Oldest");
+    render();
+  }
+
+  function onSearchChange(){
+    search = document.getElementById("search").value.trim().toLowerCase();
+    page = 1;
+    render();
+  }
+
+  function getFilteredLeads(){
+    let list = [...leads];
+
+    // sort
+    list.sort((a,b)=>{
+      const da = new Date(a.createdAt || 0).getTime();
+      const db = new Date(b.createdAt || 0).getTime();
+      return sortNewest ? (db - da) : (da - db);
+    });
+
+    // search
+    if(search){
+      list = list.filter(l=>{
+        return (
+          (l.name || "").toLowerCase().includes(search) ||
+          (l.email || "").toLowerCase().includes(search) ||
+          (l.phone || "").toLowerCase().includes(search) ||
+          (l.message || "").toLowerCase().includes(search)
+        );
+      });
+    }
+
+    return list;
+  }
+
+  function render(){
+    const list = getFilteredLeads();
+
+    const totalPages = Math.max(1, Math.ceil(list.length / pageSize));
+    if(page > totalPages) page = totalPages;
+
+    const start = (page - 1) * pageSize;
+    const pageData = list.slice(start, start + pageSize);
+
+    document.getElementById("summaryText").innerHTML =
+      `Total Leads: <b>${list.length}</b> (Page ${page}/${totalPages})`;
+
+    document.getElementById("pageNum").innerText = page;
+    document.getElementById("totalPages").innerText = totalPages;
+
+    document.getElementById("firstBtn").disabled = (page === 1);
+    document.getElementById("prevBtn").disabled = (page === 1);
+    document.getElementById("nextBtn").disabled = (page === totalPages);
+    document.getElementById("lastBtn").disabled = (page === totalPages);
 
     const tbody = document.getElementById("tbody");
     tbody.innerHTML = "";
 
-    data.leads.forEach((lead) => {
+    if(pageData.length === 0){
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td colspan="6" style="padding:16px;text-align:center;color:#555;">No leads found</td>`;
+      tbody.appendChild(tr);
+      return;
+    }
+
+    pageData.forEach((lead)=>{
+      const phone = normalizePhoneForWhatsApp(lead.phone);
+      const waLink = phone ? `https://wa.me/${phone}` : null;
+
       const tr = document.createElement("tr");
       tr.innerHTML = `
-        <td>${new Date(lead.createdAt).toLocaleString()}</td>
-        <td>${lead.name || ""}</td>
-        <td>${lead.email || ""}</td>
-        <td>${lead.phone || ""}</td>
-        <td>${lead.message || ""}</td>
-        <td>${lead.source || ""}</td>
+        <td>${lead.name || "-"}</td>
+        <td>${lead.email || "-"}</td>
+        <td>${lead.phone || "-"}</td>
+        <td>${lead.message || "-"}</td>
+        <td>${lead.createdAt ? new Date(lead.createdAt).toLocaleString() : "-"}</td>
+        <td>
+          ${waLink
+            ? `<a class="wa" href="${waLink}" target="_blank" rel="noreferrer">WhatsApp</a>`
+            : `<span style="color:#888;font-size:13px;">No number</span>`
+          }
+        </td>
       `;
       tbody.appendChild(tr);
     });
+  }
+
+  function goFirst(){ page = 1; render(); }
+  function goPrev(){ page = Math.max(1, page-1); render(); }
+  function goNext(){
+    const totalPages = Math.max(1, Math.ceil(getFilteredLeads().length / pageSize));
+    page = Math.min(totalPages, page+1);
+    render();
+  }
+  function goLast(){
+    const totalPages = Math.max(1, Math.ceil(getFilteredLeads().length / pageSize));
+    page = totalPages;
+    render();
+  }
+
+  // init
+  if(!adminKey){
+    showLogin();
+  }else{
+    fetchLeads();
   }
 </script>
 

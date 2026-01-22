@@ -86,7 +86,7 @@ app.post("/chat", async (req, res) => {
       session.step = 3;
       return res.json({
         reply:
-          "Now tell me your requirement (example: I need website / admin panel etc).",
+          "Now tell me your requirement (example: I need website / admin panel etc.).",
       });
     }
 

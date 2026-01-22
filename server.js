@@ -208,6 +208,34 @@ app.get("/api/admin/leads", async (req, res) => {
   }
 });
 
+
+const { Parser } = require("json2csv");
+
+// ? EXPORT CSV
+  app.get("/api/admin/leads/export", async (req, res) => {
+  try {
+    const key = req.headers["x-admin-key"];
+
+    if (!key || key !== process.env.ADMIN_KEY) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const leads = await Lead.find().sort({ createdAt: -1 });
+
+    const parser = new Parser({
+      fields: ["name", "email", "phone", "message", "source", "createdAt"],
+    });
+
+    const csv = parser.parse(leads);
+
+    res.header("Content-Type", "text/csv");
+    res.attachment("leadflc-leads.csv");
+    res.send(csv);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 /* ==================================================
    ? Start server
 ================================================== */
