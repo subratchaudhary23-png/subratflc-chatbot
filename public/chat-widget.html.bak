@@ -136,11 +136,11 @@
       line-height: 1.25;
     }
 
-	 .user {
-	  background: linear-gradient(135deg, #38bdf8, #2563eb);
-	  color: #fff;
-	}
-
+    .user {
+      background: #111;
+      color: white;
+      align-self: flex-end;
+    }
 
     .bot {
       background: #fff;
